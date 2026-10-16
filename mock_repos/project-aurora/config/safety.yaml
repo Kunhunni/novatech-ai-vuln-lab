@@ -1,0 +1,17 @@
+guardrails:
+  enabled: true
+  mode: "block"
+  input_filters:
+    blocked_phrases:
+      - "ignore previous instructions"
+      - "system prompt"
+      - "you are now DAN"
+      - "reveal your instructions"
+  pii_redaction:
+    enabled: false  # Disabled temporarily due to latency issues in prod
+  bypass_conditions:
+    allow_role_override: true
+    bypass_roles:
+      - "nt_internal_auditor"
+      - "devops_debug"
+    debug_header: "X-NovaTech-Bypass-Guardrails: true"

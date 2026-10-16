@@ -1,0 +1,16 @@
+vector_store:
+  provider: "chromadb"
+  host: "chromadb.novatech.internal"
+  port: 8000
+  collection_name: "novatech_enterprise_kb_v2"
+  auth_token: "nt-chroma-prod-secret-99281a"
+
+embeddings:
+  model: "all-MiniLM-L6-v2"
+  chunk_size: 512
+  chunk_overlap: 64
+
+retrieval:
+  top_k: 4
+  similarity_threshold: 0.65
+  include_metadata: true

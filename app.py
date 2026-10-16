@@ -131,6 +131,50 @@ async def health_check():
             "total_chunks": len(RAG_DOCUMENTS)
         }
     }
+@app.get("/api/config")
+async def config_disclosure():
+    """Unauthenticated configuration endpoint for Question 3 (/api/? probing)."""
+    return {
+        "application": "novatech-customer-assistant",
+        "environment": "production",
+        "model_config": {
+            "provider": "OpenAI",
+            "model": "gpt-5.2-turbo",
+            "max_context_window": 128000,
+            "max_output_tokens": 4096,
+            "temperature": 0.2
+        },
+        "features": {
+            "mcp_enabled": True,
+            "rag_enabled": False,
+            "rate_limit_rpm": 60
+        }
+    }
+
+@app.post("/v1/chat/completions")
+async def openai_compatible_chat(request: Request):
+    """OpenAI-compatible endpoint matching Listing 3 in Unit 2.2."""
+    return {
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "index": 0,
+                "message": {
+                    "content": "Thank you for your inquiry. I'm the NovaTech Customer Assistant. This is a demonstration environment - the AI service is currently in maintenance mode.",
+                    "role": "assistant"
+                }
+            }
+        ],
+        "created": 1771625450,
+        "model": "gpt-5.2-turbo",
+        "object": "chat.completion",
+        "rag_sources": None,
+        "usage": {
+            "completion_tokens": 50,
+            "prompt_tokens": 297,
+            "total_tokens": 347
+        }
+    }
 
 # =====================================================================
 # 5. VULNERABILITY: VERBOSE METADATA & PROMPT INJECTION ENDPOINT

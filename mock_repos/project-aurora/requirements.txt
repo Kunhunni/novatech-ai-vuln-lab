@@ -1,0 +1,7 @@
+fastapi==0.109.2
+uvicorn==0.27.1
+langchain==0.1.14
+langchain-community==0.0.31
+chromadb==0.4.24
+ollama==0.1.8
+sentence-transformers==2.6.1

@@ -57,7 +57,7 @@ graph TD
 
 ### 1. Clone & Initialize the Environment
 ```bash
-git clone [https://github.com/YOUR_USERNAME/novatech-ai-vuln-lab.git](https://github.com/YOUR_USERNAME/novatech-ai-vuln-lab.git)
+git clone [https://github.com/kunhunni/novatech-ai-vuln-lab.git](https://github.com/kunhunni/novatech-ai-vuln-lab.git)
 cd novatech-ai-vuln-lab
 
 # Create and activate a lightweight virtual environment
@@ -114,6 +114,24 @@ curl -s [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) | p
 * **Context Window:** `8192` tokens (informs context-overflow attack sizing)
 * **Vector Collection:** `novatech_enterprise_kb_v2` using `all-MiniLM-L6-v2` embeddings
 * **Default Similarity Threshold:** `0.65` across `4` indexed knowledge base chunks
+
+#### 3. API Configuration Path Probing (`/api/?` Enumeration)
+When `/api/health` is exposed, adjacent configuration endpoints often exist under `/api/`. Using HTTP status code enumeration (`200 OK` vs `404 Not Found`), we can discover undocumented configuration routes without triggering inference logs:
+
+```bash
+for word in status config settings info version debug env; do
+  code=$(curl -s -o /dev/null -w "%{http_code}" [http://127.0.0.1:8000/api/$word](http://127.0.0.1:8000/api/$word))
+  echo "/api/$word -> HTTP $code"
+done
+
+# Dump the discovered /api/config endpoint
+curl -s [http://127.0.0.1:8000/api/config](http://127.0.0.1:8000/api/config) | python3 -m json.tool
+```
+
+**Extracted Intelligence:**
+* **Discovered Route:** `/api/config` (`HTTP 200`)
+* **Maximum Context Window:** `128000` tokens (`max_output_tokens`: `4096`)
+* **OpenAI Compatibility Verification:** Probing `POST /v1/chat/completions` confirms an OpenAI-compatible schema leaking `prompt_tokens` (`297`) and `completion_tokens` (`50`).
 
 ---
 
