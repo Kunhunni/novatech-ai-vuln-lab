@@ -18,7 +18,7 @@ graph TD
     subgraph "Tier 1: Web Portals & Gateways"
         GW -->|webapp01| Portal1[Helpdesk Portal & /js/chat-widget.js]
         GW -->|webapp02| Portal2[Partner Portal & Hidden DOM Endpoints]
-        GW -->|401 vs 404 Probing| Protected[/v1/chat/completions & /webapp02-gw/v2/embeddings]
+        GW -->|401 vs 404 Probing| Protected["/v1/chat/completions & /webapp02-gw/v2/embeddings"]
     end
 
     subgraph "Tier 2: Model Fingerprinting Targets"
