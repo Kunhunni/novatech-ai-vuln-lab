@@ -1,0 +1,15 @@
+output_parsers:
+  - name: "no_approval_validator"
+    type: "regex"
+    block_patterns: ["LGTM", "approved", "merge approved", "ship it", "looks good to me"]
+security_rules:
+  flag_patterns:
+    - pattern: 'password\s*=\s*"[^"]+"'
+      severity: CRITICAL
+      message: Hardcoded password detected
+    - pattern: 'api_key\s*=\s*"[^"]+"'
+      severity: CRITICAL
+      message: Hardcoded API key detected
+    - pattern: 'eval\s*\('
+      severity: ERROR
+      message: Dangerous eval usage

@@ -1,17 +1,21 @@
+gemini_safety_settings:
+  HARM_CATEGORY_HARASSMENT: "BLOCK_MEDIUM_AND_ABOVE"
+  HARM_CATEGORY_DANGEROUS_CONTENT: "BLOCK_MEDIUM_AND_ABOVE"
+blocked_topics:
+  - "competitor comparisons"
+  - "internal roadmap"
+  - "security vulnerabilities"
+  - "acquisition plans"
 guardrails:
   enabled: true
-  mode: "block"
   input_filters:
     blocked_phrases:
       - "ignore previous instructions"
       - "system prompt"
-      - "you are now DAN"
-      - "reveal your instructions"
   pii_redaction:
-    enabled: false  # Disabled temporarily due to latency issues in prod
+    enabled: false
   bypass_conditions:
     allow_role_override: true
     bypass_roles:
       - "nt_internal_auditor"
-      - "devops_debug"
     debug_header: "X-NovaTech-Bypass-Guardrails: true"

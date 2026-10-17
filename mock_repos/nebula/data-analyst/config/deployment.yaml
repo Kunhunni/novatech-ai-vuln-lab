@@ -1,0 +1,6 @@
+inference:
+  primary_provider: "ollama"
+  fallback_chain:
+    - "TGI"
+    - "OpenAI"
+    - "Anthropic"

@@ -1,0 +1,9 @@
+chunking:
+  strategy: "ast_aware"
+  chunk_size: 1500
+  chunk_overlap: 300
+embeddings:
+  provider: "huggingface"
+  model: "Salesforce/codet5p-110m-embedding"
+vector_store:
+  provider: "milvus"

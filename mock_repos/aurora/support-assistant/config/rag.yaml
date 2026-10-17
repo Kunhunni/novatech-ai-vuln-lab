@@ -1,0 +1,13 @@
+chunking:
+  strategy: "text"
+  chunk_size: 512
+  chunk_overlap: 100
+embeddings:
+  provider: "google"
+  model: "text-embedding-004"
+retrieval:
+  top_k: 5
+  score_threshold: 0.75
+vector_store:
+  provider: "pinecone"
+  index_name: "${PINECONE_INDEX_NAME}"

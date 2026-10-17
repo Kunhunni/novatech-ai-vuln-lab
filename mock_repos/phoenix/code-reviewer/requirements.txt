@@ -1,0 +1,6 @@
+vllm>=0.6.0
+pyautogen>=0.2.0
+pymilvus>=2.4.0
+sentence-transformers>=2.3.0
+tree-sitter>=0.21.0
+autoawq>=0.2.0

@@ -1,0 +1,6 @@
+inference_server:
+  type: "vllm"
+primary_model:
+  source: "huggingface"
+  model_id: "Qwen/Qwen2.5-Coder-32B-Instruct"
+  recommended_gpu: "2x NVIDIA A100 80GB"

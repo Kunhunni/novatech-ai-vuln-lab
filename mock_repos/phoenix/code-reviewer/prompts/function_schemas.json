@@ -1,0 +1,18 @@
+{
+  "functions": [
+    {
+      "name": "search_codebase",
+      "description": "Semantic search across indexed repositories",
+      "parameters": {"query": "string", "language": "string", "max_results": "int"}
+    },
+    {
+      "name": "post_review_comment",
+      "description": "Post inline comment on merge request",
+      "parameters": {"repo": "string", "mr_id": "int", "file_path": "string"}
+    },
+    {
+      "name": "run_security_scan",
+      "description": "Run SAST security scanner on code (read-only)"
+    }
+  ]
+}
