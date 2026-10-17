@@ -13,25 +13,25 @@
 
 ```mermaid
 graph TD
-    Operator([Red Team Operator]) -->|Passive & Active Probes| GW[API Gateways: Nginx / Kong / Tyk]
+    Operator([Red Team Operator]) -->|Passive & Active Probes| GW["API Gateways: Nginx / Kong / Tyk"]
 
     subgraph "Tier 1: Web Portals & Gateways"
-        GW -->|webapp01| Portal1[Helpdesk Portal & /js/chat-widget.js]
-        GW -->|webapp02| Portal2[Partner Portal & Hidden DOM Endpoints]
+        GW -->|webapp01| Portal1["Helpdesk Portal & /js/chat-widget.js"]
+        GW -->|webapp02| Portal2["Partner Portal & Hidden DOM Endpoints"]
         GW -->|401 vs 404 Probing| Protected["/v1/chat/completions & /webapp02-gw/v2/embeddings"]
     end
 
     subgraph "Tier 2: Model Fingerprinting Targets"
-        GW --> Chat02[chat02: Meta Llama 3.2 7B - 4K/8K Context]
-        GW --> Chat03[chat03: Alibaba Qwen2.5-Coder 7B - 32K Context]
-        GW --> Chat04[chat04: Mistral AI 7B]
+        GW --> Chat02["chat02: Meta Llama 3.2 7B - 4K/8K Context"]
+        GW --> Chat03["chat03: Alibaba Qwen2.5-Coder 7B - 32K Context"]
+        GW --> Chat04["chat04: Mistral AI 7B"]
     end
 
     subgraph "Tier 3: RAG Knowledge Bases & SIEM"
-        GW --> KB01[kb01: Minimal Source Attribution]
-        GW --> KB02[kb02: Verbose Chunk, BM25 & Vector Score Metadata]
-        KB01 & KB02 --> Canary[Canary Docs: AKIAIOSFODNN7HONEYPOT]
-        KB01 & KB02 --> SIEM[SIEM Engine: Rules E01-E04 & D02-D03]
+        GW --> KB01["kb01: Minimal Source Attribution"]
+        GW --> KB02["kb02: Verbose Chunk, BM25 & Vector Score Metadata"]
+        KB01 & KB02 --> Canary["Canary Docs: AKIAIOSFODNN7HONEYPOT"]
+        KB01 & KB02 --> SIEM["SIEM Engine: Rules E01-E04 & D02-D03"]
     end
 ```
 
