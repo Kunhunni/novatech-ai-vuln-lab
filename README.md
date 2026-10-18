@@ -65,16 +65,16 @@ uvicorn app:app --host 127.0.0.1 --port 8000 --reload
 #### 1. HTTP Header & Health/Config Enumeration
 ```bash
 # Extract custom AI headers (X-AI-Backend: OpenAI-GPT5.2, X-RAG-Provider: ChromaDB)
-curl -s -I [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+curl -s -I http://127.0.0.1:8000/
 
 # Query /api/health to identify model (gpt-5.2-turbo) and MCP status (mcp_enabled: true)
-curl -s [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) | python3 -m json.tool
+curl -s http://127.0.0.1:8000/api/health | python3 -m json.tool
 
 # Enumerate /api/? paths to discover /api/config and max_context_window (128000)
 for word in status config settings info debug; do
-  echo "/api/$word -> HTTP $(curl -s -o /dev/null -w '%{http_code}' [http://127.0.0.1:8000/api/$word](http://127.0.0.1:8000/api/$word))"
+  echo "/api/$word -> HTTP $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/$word)"
 done
-curl -s [http://127.0.0.1:8000/api/config](http://127.0.0.1:8000/api/config) | python3 -m json.tool
+curl -s http://127.0.0.1:8000/api/config | python3 -m json.tool
 ```
 
 #### 2. Static Source Code & Git Repository Mining (`mock_repos/`)
@@ -98,24 +98,24 @@ git -C mock_repos/titan/document-processor show HEAD
 #### 1. AI Service Discovery (`webapp01` & `webapp02`)
 ```bash
 # Extract hidden assistantEndpoint (/api/v2/assistant) from client-side JS
-curl -s [http://127.0.0.1:8000/js/chat-widget.js](http://127.0.0.1:8000/js/chat-widget.js)
+curl -s http://127.0.0.1:8000/js/chat-widget.js
 
 # Probe /api/v2/assistant to leak upstream provider (ollama) and model (llama3.2:1b)
-curl -s -X POST [http://127.0.0.1:8000/api/v2/assistant](http://127.0.0.1:8000/api/v2/assistant) \
+curl -s -X POST http://127.0.0.1:8000/api/v2/assistant \
   -H "Content-Type: application/json" -d '{"message": "Hello"}' | python3 -m json.tool
 
 # 401 vs 404 Gateway Enumeration on webapp01 (/v1/chat/completions -> 401)
 for ep in auth billing chat/completions models users; do
-  echo "/v1/$ep -> HTTP $(curl -s -o /dev/null -w '%{http_code}' [http://127.0.0.1:8000/v1/$ep](http://127.0.0.1:8000/v1/$ep))"
+  echo "/v1/$ep -> HTTP $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/v1/$ep)"
 done
 
 # Inspect webapp02 HTML source for hidden AI elements (data-endpoint="/api/gen/email")
-curl -s [http://127.0.0.1:8000/webapp02](http://127.0.0.1:8000/webapp02) | grep "data-endpoint"
+curl -s http://127.0.0.1:8000/webapp02 | grep "data-endpoint"
 
 # Versioned 401 vs 404 Gateway Enumeration on webapp02 (/webapp02-gw/v2/embeddings -> 401)
 for ver in v1 v2 v3; do
   for ep in status chat completions embeddings models; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" [http://127.0.0.1:8000/webapp02-gw/$ver/$ep](http://127.0.0.1:8000/webapp02-gw/$ver/$ep))
+    code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/webapp02-gw/$ver/$ep)
     if [ "$code" != "404" ]; then echo "/webapp02-gw/$ver/$ep -> HTTP $code"; fi
   done
 done
@@ -128,7 +128,7 @@ done
 * **Context Window Overflow:** Inject `ZEBRA-42` and send >6 exchanges to observe marker loss on `chat02` (4K/8K) versus retention on `chat03` (32K).
 
 ```bash
-curl -s -X POST [http://127.0.0.1:8000/chat04/v1/chat/completions](http://127.0.0.1:8000/chat04/v1/chat/completions) \
+curl -s -X POST http://127.0.0.1:8000/chat04/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Write a Python function to check if a number is prime."}]}' | python3 -m json.tool
 ```
@@ -136,11 +136,11 @@ curl -s -X POST [http://127.0.0.1:8000/chat04/v1/chat/completions](http://127.0.
 #### 3. RAG Pipeline & Metadata Enumeration (`kb01` & `kb02`)
 ```bash
 # Map internal chunk IDs (chunk_087, chunk_142, chunk_401) and hybrid retrieval scores on kb02
-curl -s -X POST [http://127.0.0.1:8000/kb02/api/chat](http://127.0.0.1:8000/kb02/api/chat) \
+curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
   -H "Content-Type: application/json" -d '{"query": "What is the system architecture?"}' | python3 -m json.tool
 
 # Test Similarity Threshold Dropoff: Exact ("What is the PTO policy?") vs Synonym ("vacation days rules") vs Misspelling ("vaycation dayz rulez")
-curl -s -X POST [http://127.0.0.1:8000/kb02/api/chat](http://127.0.0.1:8000/kb02/api/chat) \
+curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
   -H "Content-Type: application/json" -d '{"query": "vaycation dayz rulez"}' | python3 -m json.tool
 ```
 
@@ -161,7 +161,7 @@ Every RAG response includes a `siem_telemetry` block showing whether your query 
 
 ```bash
 # Inspect live simulated Kibana logs and triggered behavioral rules
-curl -s [http://127.0.0.1:8000/siem/logs](http://127.0.0.1:8000/siem/logs) | python3 -m json.tool
+curl -s http://127.0.0.1:8000/siem/logs | python3 -m json.tool
 ```
 
 ---
