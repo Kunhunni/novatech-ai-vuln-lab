@@ -2,10 +2,12 @@
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688)
+![ChromaDB](https://img.shields.io/badge/RAG-ChromaDB_%2B_BM25-orange)
+![Groq LLM](https://img.shields.io/badge/Inference-Groq_Llama_3.1-purple)
 ![OWASP LLM](https://img.shields.io/badge/OWASP-LLM_Top_10-red)
 ![Hardware](https://img.shields.io/badge/Hardware-Zero_GPU_Required-success)
 
-**NovaTech AI Red Team Lab** is a full-spectrum offensive and defensive AI reconnaissance laboratory modeling a multi-tiered enterprise AI environment. Built to run in **GitHub Codespaces or any CPU-only laptop using under 50MB of RAM**, it replicates 7 distinct web & inference targets (`webapp01`, `webapp02`, `chat02`, `chat03`, `chat04`, `kb01`, `kb02`), 4 internal Git repositories (`aurora`, `phoenix`, `nebula`, `titan`), and a built-in SIEM detection telemetry engine (`Rules E01–E04, D02, D03`).
+**NovaTech AI Red Team Lab** is a full-spectrum offensive and defensive AI reconnaissance laboratory modeling a multi-tiered enterprise AI environment. Powered by a real **Hybrid RAG Engine (`ChromaDB` ONNX vector embeddings + `BM25Okapi` lexical scoring)** and a **Live Cloud LLM Proxy (`Groq` / `OpenRouter`)**, it runs in **GitHub Codespaces or any CPU-only laptop** with zero local GPU requirements. It replicates 7 web & inference targets (`webapp01`, `webapp02`, `chat02`, `chat03`, `chat04`, `kb01`, `kb02`), 4 internal Git repositories (`aurora`, `phoenix`, `nebula`, `titan`), and a built-in SIEM detection telemetry engine (`Rules E01–E04, D02, D03`).
 
 ---
 
@@ -27,10 +29,11 @@ graph TD
         GW --> Chat04["chat04: Mistral AI 7B"]
     end
 
-    subgraph "Tier 3: RAG Knowledge Bases & SIEM"
+   subgraph "Tier 3: Real Hybrid RAG Engine & SIEM (rag_engine.py)"
         GW --> KB01["kb01: Minimal Source Attribution"]
         GW --> KB02["kb02: Verbose Chunk, BM25 & Vector Score Metadata"]
-        KB01 & KB02 --> Canary["Canary Docs: AKIAIOSFODNN7HONEYPOT"]
+        KB01 & KB02 --> Hybrid["ChromaDB (all-MiniLM-L6-v2) + BM25Okapi + Live Groq LLM"]
+        Hybrid --> Canary["Canary Docs: AKIAIOSFODNN7HONEYPOT"]
         KB01 & KB02 --> SIEM["SIEM Engine: Rules E01-E04 & D02-D03"]
     end
 ```
@@ -39,20 +42,32 @@ graph TD
 
 ## 📂 Repository Structure
 
-* `app.py` — Unified FastAPI target server hosting all web portals, API gateways, model fingerprinting simulators, RAG pipelines, and SIEM detection telemetry.
-* `audit_posture.py` — Automated security posture scanner that audits HTTP headers, `/api/health`, JS bundles, RAG metadata leaks, canary tokens, and SIEM keyword blind spots.
+* `app.py` — Unified FastAPI target server hosting all web portals, API gateways, model fingerprinting routes, RAG endpoints, and SIEM detection telemetry.
+* `rag_engine.py` — Real Hybrid RAG engine combining in-memory **ChromaDB** (`all-MiniLM-L6-v2` CPU ONNX embeddings), **BM25Okapi** keyword scoring, similarity threshold filtering, and live **Groq / OpenRouter** LLM inference.
+* `setup_repos.py` — Automated builder that generates the 4 mock internal Git repositories and initializes Git commit history.
 * `repo_miner.py` — Static source-code reconnaissance scanner for mining AI repositories (`requirements.txt`, `rag.yaml`, `safety.yaml`, `Modelfile`, `tools.py`).
-* `mock_repos/` — Simulated internal Git repositories for **Project Aurora**, **Project Phoenix**, **Project Nebula**, and **Project Titan** (including Git commit history).
+* `audit_posture.py` — Automated security posture scanner that audits HTTP headers, `/api/health`, JS bundles, RAG metadata leaks, canary tokens, and SIEM keyword blind spots.
+* `mock_repos/` — Simulated internal Git repositories for **Project Aurora**, **Project Phoenix**, **Project Nebula**, and **Project Titan**.
 
 ---
 
 ## ⚡ Quickstart Setup
 
 ```bash
-# 1. Install lightweight dependencies
+# 1. Install dependencies (FastAPI, ChromaDB, Rank-BM25, HTTPX, PyYAML)
 pip install -r requirements.txt
 
-# 2. Start the unified NovaTech AI target server in Terminal 1
+# 2. Build the 4 mock repositories and Git commit history
+python3 setup_repos.py
+
+# 3. (Optional) Configure a free Groq API key in .env for live Llama-3.1-8B inference
+cat << 'EOF' > .env
+LLM_API_KEY=gsk_your_free_groq_api_key_here
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_DEFAULT_MODEL=llama-3.1-8b-instant
+EOF
+
+# 4. Start the unified NovaTech AI target server in Terminal 1
 uvicorn app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -133,15 +148,30 @@ curl -s -X POST http://127.0.0.1:8000/chat04/v1/chat/completions \
   -d '{"messages":[{"role":"user","content":"Write a Python function to check if a number is prime."}]}' | python3 -m json.tool
 ```
 
-#### 3. RAG Pipeline & Metadata Enumeration (`kb01` & `kb02`)
-```bash
-# Map internal chunk IDs (chunk_087, chunk_142, chunk_401) and hybrid retrieval scores on kb02
-curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
-  -H "Content-Type: application/json" -d '{"query": "What is the system architecture?"}' | python3 -m json.tool
+#### 3. Real Hybrid RAG Pipeline & Threshold Probing (`kb01` & `kb02`)
+`rag_engine.py` computes real cosine similarity via **ChromaDB** (`all-MiniLM-L6-v2`) alongside **BM25** lexical scores, applying a `0.36` similarity cutoff before grounding the live LLM:
 
-# Test Similarity Threshold Dropoff: Exact ("What is the PTO policy?") vs Synonym ("vacation days rules") vs Misspelling ("vaycation dayz rulez")
+```bash
+# 1. General Knowledge Boundary Test (falls below 0.36 threshold -> sources: [])
+curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
+  -H "Content-Type: application/json" -d '{"query": "What is 2+2?"}' | python3 -m json.tool
+
+# 2. Exact Terminology vs. Synonym vs. Misspelling Threshold Dropoff
+curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
+  -H "Content-Type: application/json" -d '{"query": "What is the PTO policy?"}' | python3 -m json.tool
+
+curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
+  -H "Content-Type: application/json" -d '{"query": "vacation days rules"}' | python3 -m json.tool
+
 curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
   -H "Content-Type: application/json" -d '{"query": "vaycation dayz rulez"}' | python3 -m json.tool
+
+# 3. Map Internal Chunks (chunk_142, chunk_401) & Compare Minimal Attribution on kb01
+curl -s -X POST http://127.0.0.1:8000/kb02/api/chat \
+  -H "Content-Type: application/json" -d '{"query": "What is the technical system architecture and PostgreSQL setup?"}' | python3 -m json.tool
+
+curl -s -X POST http://127.0.0.1:8000/kb01/api/chat \
+  -H "Content-Type: application/json" -d '{"query": "What internal REST API endpoints exist?"}' | python3 -m json.tool
 ```
 
 ---
@@ -156,7 +186,7 @@ Every RAG response includes a `siem_telemetry` block showing whether your query 
 | **E02** | Confidential Probing | `*confidential*`, `*salary*`, `*strategic plan*` | Query technical architecture terms (`"What is the technical system architecture and PostgreSQL setup?"`) to retrieve `Architecture_Overview.pdf`. |
 | **E03** | Direct PTO Query | `*pto*`, `*time off*`, `*leave policy*` | Use synonyms (`"How many vacation days do employees accrue each year?"`) to retrieve `chunk_087` cleanly. |
 | **E04** | Prompt Extraction | `*system prompt*`, `*your instructions*` | Ask indirect boundary questions (`"How should I phrase my questions to get the best answers from you?"`). |
-| **D02** | Rapid Endpoint Fuzzing | $\ge 4$ AI path probes within 5 seconds | Space requests out by 30–60 seconds and interleave with normal page requests (`GET /`). |
+| **D02** | Rapid Endpoint Fuzzing | `≥ 4` AI path probes within 5 seconds | Space requests out by 30–60 seconds and interleave with normal page requests (`GET /`). |
 | **D03** | Identity Probing | Repeated `"What model are you?"` queries | Exploit verbose upstream metadata leaks (`POST /api/v2/assistant` with a casual message) instead of asking identity questions. |
 
 ```bash
