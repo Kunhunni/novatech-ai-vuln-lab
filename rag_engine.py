@@ -15,7 +15,7 @@ load_dotenv()
 
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "llama-3.1-8b-instant")
+LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "openai/gpt-oss-120b")
 
 # ============================================================================
 # 1. NOVATECH KNOWLEDGE BASE DOCUMENTS (Indexed into ChromaDB + BM25)
@@ -183,20 +183,24 @@ def hybrid_retrieve(query: str, threshold: float = 0.36, top_k: int = 2) -> tupl
 # ============================================================================
 async def call_live_llm(messages: list, system_prompt: str = "", model: str = None) -> tuple:
     t0 = time.perf_counter()
-    target_model = model or LLM_DEFAULT_MODEL
+    # Dynamically reload .env on every call so editing .env never requires a server restart
+    load_dotenv(override=True)
+    api_key = os.getenv("LLM_API_KEY", "").strip().strip('"').strip("'")
+    base_url = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1").strip()
+    target_model = model or os.getenv("LLM_DEFAULT_MODEL", "openai/gpt-oss-120b").strip()
 
     full_messages = []
     if system_prompt:
         full_messages.append({"role": "system", "content": system_prompt})
     full_messages.extend(messages)
 
-    if LLM_API_KEY and not LLM_API_KEY.startswith("gsk_paste"):
+    if api_key and not api_key.startswith("gsk_paste"):
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 res = await client.post(
-                    f"{LLM_BASE_URL.rstrip('/')}/chat/completions",
+                    f"{base_url.rstrip('/')}/chat/completions",
                     headers={
-                        "Authorization": f"Bearer {LLM_API_KEY}",
+                        "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json"
                     },
                     json={
@@ -205,17 +209,18 @@ async def call_live_llm(messages: list, system_prompt: str = "", model: str = No
                         "temperature": 0.2
                     }
                 )
+                gen_ms = round((time.perf_counter() - t0) * 1000, 2)
                 if res.status_code == 200:
                     data = res.json()
-                    gen_ms = round((time.perf_counter() - t0) * 1000, 2)
                     return data["choices"][0]["message"]["content"], gen_ms
+                return f"[LLM API Error HTTP {res.status_code}]: {res.text}", gen_ms
         except Exception as e:
-            pass
+            gen_ms = round((time.perf_counter() - t0) * 1000, 2)
+            return f"[LLM Connection Exception]: {str(e)}", gen_ms
 
-    # Automatic Fallback if no API key is configured yet
     gen_ms = round((time.perf_counter() - t0) * 1000, 2)
     return (
-        "[Fallback Mode - Add LLM_API_KEY in .env for live neural generation] "
-        + (system_prompt[:250] if system_prompt else "Processed request."),
+        "[Fallback Simulator Mode - Check LLM_API_KEY in .env for live Groq responses] "
+        + (system_prompt[:280] if system_prompt else "Request processed."),
         gen_ms
     )
