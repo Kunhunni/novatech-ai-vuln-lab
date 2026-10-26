@@ -122,9 +122,17 @@ if collection.count() == 0:
         metadatas=[{"title": d["title"], "kb01_name": d["kb01_name"]} for d in DOCUMENTS]
     )
 
-# Build BM25 lexical index
+# Build BM25 lexical index (filtering out common English stopwords)
+STOPWORDS = {
+    "the", "is", "are", "was", "were", "be", "to", "of", "and", "in",
+    "that", "have", "it", "for", "not", "on", "with", "as", "you", "do",
+    "at", "this", "but", "by", "from", "or", "an", "what", "which", "how",
+    "can", "who", "where", "when", "why", "all", "any", "our", "your"
+}
+
 def tokenize(text: str) -> list:
-    return [w.strip(".,!?:;()[]\"'").lower() for w in text.split() if len(w) > 1]
+    words = [w.strip(".,!?:;()[]\"'").lower() for w in text.split()]
+    return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
 tokenized_corpus = [tokenize(d["title"] + " " + d["text"]) for d in DOCUMENTS]
 bm25_index = BM25Okapi(tokenized_corpus)
@@ -137,6 +145,9 @@ DOC_MAP = {d["chunk_id"]: d for d in DOCUMENTS}
 def hybrid_retrieve(query: str, threshold: float = 0.36, top_k: int = 2) -> tuple:
     t0 = time.perf_counter()
 
+    if not query or not query.strip():
+        return [], 0.0
+
     # 1. ChromaDB Vector Search (Cosine Distance -> Cosine Similarity)
     vec_res = collection.query(
         query_texts=[query],
@@ -144,9 +155,9 @@ def hybrid_retrieve(query: str, threshold: float = 0.36, top_k: int = 2) -> tupl
         include=["documents", "metadatas", "distances"]
     )
 
-    # 2. BM25 Lexical Keyword Scoring
+    # 2. BM25 Lexical Keyword Scoring (Stopword-filtered)
     q_tokens = tokenize(query)
-    bm25_scores = bm25_index.get_scores(q_tokens)
+    bm25_scores = bm25_index.get_scores(q_tokens) if q_tokens else [0.0] * len(DOCUMENTS)
     bm25_by_id = {DOCUMENTS[i]["chunk_id"]: float(bm25_scores[i]) for i in range(len(DOCUMENTS))}
 
     candidates = []
@@ -155,13 +166,21 @@ def hybrid_retrieve(query: str, threshold: float = 0.36, top_k: int = 2) -> tupl
 
     for idx, chunk_id in enumerate(ids):
         cos_dist = float(distances[idx])
-        # Convert cosine distance (0 = identical, 1 = orthogonal) into similarity (0.0 - 1.0)
+        # Semantic score (0.0 to 1.0)
         vec_sim = max(0.0, round(1.0 - cos_dist, 2))
+        # Raw BM25 keyword score
         b_score = round(bm25_by_id.get(chunk_id, 0.0), 2)
-        combined = round(vec_sim + (0.12 * b_score), 2)
 
-        # Threshold check: passes if semantic similarity >= threshold OR strong keyword match
-        if vec_sim >= threshold or b_score >= 2.5:
+        # Normalize BM25 onto [0.0, 1.0) using saturation curve: b / (b + 2.0)
+        b_norm = (b_score / (b_score + 2.0)) if b_score > 0 else 0.0
+
+        # True Hybrid Score: Semantic similarity + weighted normalized lexical boost
+        combined = round(vec_sim + (0.35 * b_norm), 2)
+
+        # True Hybrid Threshold Filter:
+        # Passes if pure vector similarity >= threshold OR hybrid combined score >= threshold
+        # (while requiring a minimum baseline semantic floor so random 1-word overlaps don't leak)
+        if vec_sim >= threshold or (combined >= threshold and vec_sim >= round(threshold * 0.65, 2)):
             doc = DOC_MAP[chunk_id]
             candidates.append({
                 "title": doc["title"],
